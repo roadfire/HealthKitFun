@@ -86,7 +86,9 @@ class HealthViewModel {
         let predicate = HKQuery.predicateForSamplesWithStartDate(startDate, endDate: endDate, options: .StrictStartDate)
         
         let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: HKStatisticsOptions.CumulativeSum) { (query, result, error) -> Void in
-            completion(quantity: result.sumQuantity(), error: error)
+            if result != nil {
+                completion(quantity: result.sumQuantity(), error: error)                
+            }
         }
         self.healthStore?.executeQuery(query)
     }
