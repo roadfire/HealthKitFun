@@ -429,6 +429,7 @@
 				0384C90A19E323B000BE56DE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		0384C90B19E323B000BE56DE /* Build configuration list for PBXNativeTarget "HealthKitFunTests" */ = {
 			isa = XCConfigurationList;
@@ -437,6 +438,7 @@
 				0384C90D19E323B000BE56DE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

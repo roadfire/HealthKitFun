@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import HealthKit
 
 class ViewController: UITableViewController {
     
@@ -21,33 +20,26 @@ class ViewController: UITableViewController {
     }
     
     func refresh() {
-        viewModel.fetchSteps { () -> () in
-            dispatch_async(dispatch_get_main_queue()) {
-                self.tableView.reloadData()
-                self.refreshControl?.endRefreshing()
-            }
-        }
-        viewModel.fetchDistance{ () -> () in
-            dispatch_async(dispatch_get_main_queue()) {
-                self.tableView.reloadData()
-                self.refreshControl?.endRefreshing()
+        viewModel.fetchData { (success) -> () in
+            if success {
+                dispatch_async(dispatch_get_main_queue()) {
+                    self.tableView.reloadData()
+                    self.refreshControl?.endRefreshing()
+                }
+            } else {
+                let alert = UIAlertController(title: "Health Data Unavailable", message: "Health Data is unavailable - this isn't going to work well...", preferredStyle: .Alert)
+                let action = UIAlertAction(title: "OK", style: .Default, handler: { (action) in
+                    // nothing to do
+                })
+                alert.addAction(action)
+                self.presentViewController(alert, animated: true, completion: nil)
             }
         }
     }
     
     override func viewWillAppear(animated: Bool) {
-        if HKHealthStore.isHealthDataAvailable() {
-            viewModel.requestAccessToDataTypes()
-            self.refresh()
-        } else {
-            let alert = UIAlertController(title: "Health Data Unavailable", message: "Health Data is unavailable - this isn't going to work well...", preferredStyle: .Alert)
-            let action = UIAlertAction(title: "OK", style: .Default, handler: { (action) in
-                // nothing to do
-            })
-            alert.addAction(action)
-            self.presentViewController(alert, animated: true, completion: nil)
-        }
-    }    
+        self.refresh()
+    }
 
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return viewModel.numberOfRowsInSection(section)

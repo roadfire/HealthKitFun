@@ -11,7 +11,7 @@ import HealthKit
 
 class HealthViewModel {
     
-    var healthStore: HKHealthStore?
+    let healthStore: HKHealthStore
     var steps = 0
     var distance = 0.0
     
@@ -19,16 +19,30 @@ class HealthViewModel {
         self.healthStore = HKHealthStore()
     }
     
-    func requestAccessToDataTypes() {
+    func fetchData(completion: (success: Bool) -> ()) {
+        self.requestAccessToDataTypes { (success) -> () in
+            completion(success: success)
+        }
+    }
+    
+    func requestAccessToDataTypes(completion: (success: Bool) -> ()) {
+        if !HKHealthStore.isHealthDataAvailable() {
+            completion(success: false)
+            return
+        }
+        
         let typesToRead = self.dataTypesToRead()
-        self.healthStore?.requestAuthorizationToShareTypes(NSSet(), readTypes:typesToRead, completion: { (success, error) -> Void in
+        healthStore.requestAuthorizationToShareTypes(NSSet(), readTypes:typesToRead, completion: { (success, error) -> Void in
             if !success {
                 println("HealthKit can't access the data it needs to display these values.")
+                completion(success: false)
                 return
             }
             
             self.fetchSteps(){}
-            self.fetchDistance(){}
+            self.fetchDistance() {
+                completion(success: true)
+            }
         })
     }
 
@@ -40,40 +54,25 @@ class HealthViewModel {
     
     func fetchSteps(completion: () -> ()) {
         let stepsType = HKQuantityType.quantityTypeForIdentifier(HKQuantityTypeIdentifierStepCount)
-        self.fetchMostRecentDataOfQuantityType(stepsType, anchor: 0) { (quantitySamples, newAnchor, error) -> () in
-            println("quantity samples: \(quantitySamples)")
-            
-            var steps = 0
-            if let samples = quantitySamples {
-                for sample in samples {
-                    steps += Int(sample.quantity.doubleValueForUnit(HKUnit.countUnit()))
-                    println("adding steps: \(steps)")
-                }
+        self.fetchTotalDataOfQuantityType(stepsType, completion: { (quantity, error) -> () in
+            if let quantity = quantity {
+                self.steps = Int(quantity.doubleValueForUnit(HKUnit.countUnit()))
             }
-            
-            self.steps = steps
             completion()
-        }
+        })
     }
     
     func fetchDistance(completion: () -> ()) {
         let distanceType = HKQuantityType.quantityTypeForIdentifier(HKQuantityTypeIdentifierDistanceWalkingRunning)
         self.fetchTotalDataOfQuantityType(distanceType, completion: { (quantity, error) -> () in
-            self.distance = quantity.doubleValueForUnit(HKUnit.mileUnit())
+            if let quantity = quantity {
+                self.distance = quantity.doubleValueForUnit(HKUnit.mileUnit())
+            }
             completion()
         })
     }
     
-    func fetchMostRecentDataOfQuantityType(quantityType: HKQuantityType, anchor: Int, completion:(quantitySamples: [HKQuantitySample]?, newAnchor: Int, error: NSError?) -> ()) {
-        let query = HKAnchoredObjectQuery(type: quantityType, predicate: nil, anchor: anchor, limit: 0) { (query, results, newAnchor, error) -> Void in
-            completion(quantitySamples: results as? [HKQuantitySample], newAnchor: newAnchor, error: error)
-        }
-        
-        self.healthStore?.executeQuery(query)
-    }
-    
-    func fetchTotalDataOfQuantityType(quantityType: HKQuantityType, completion:(quantity: HKQuantity, error: NSError?) -> ()) {
-        
+    func fetchTotalDataOfQuantityType(quantityType: HKQuantityType, completion:(quantity: HKQuantity?, error: NSError?) -> ()) {
         let calendar = NSCalendar.currentCalendar()
         let now = NSDate()
         
@@ -87,10 +86,10 @@ class HealthViewModel {
         
         let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: HKStatisticsOptions.CumulativeSum) { (query, result, error) -> Void in
             if result != nil {
-                completion(quantity: result.sumQuantity(), error: error)                
+                completion(quantity: result.sumQuantity(), error: error)
             }
         }
-        self.healthStore?.executeQuery(query)
+        healthStore.executeQuery(query)
     }
     
     func numberOfRowsInSection(section: Int) -> Int {
